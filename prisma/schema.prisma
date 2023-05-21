@@ -1,0 +1,327 @@
+generator client {
+    // Corresponds to the cargo alias created earlier
+    provider      = "cargo prisma"
+    // The location to generate the client. Is relative to the position of the schema
+    output        = "../src/prisma.rs"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model activities {
+  id                                   Int          @id @default(autoincrement())
+  created_at                           DateTime     @default(now()) @db.Timestamp(6)
+  kind                                 ActivityKind
+  user_id                              Int
+  review_id                            Int
+  point                                Int
+  from_user_id                         Int?
+  users_activities_from_user_idTousers users?       @relation("activities_from_user_idTousers", fields: [from_user_id], references: [id])
+  reviews                              reviews      @relation(fields: [review_id], references: [id])
+  users_activities_user_idTousers      users        @relation("activities_user_idTousers", fields: [user_id], references: [id])
+}
+
+model banners {
+  id           Int      @id @default(autoincrement())
+  created_at   DateTime @default(now()) @db.Timestamp(6)
+  expried_time DateTime @db.Timestamp(6)
+  source_id    Int
+  storages     storages @relation(fields: [source_id], references: [id])
+}
+
+model businesses {
+  id                      Int                       @id @default(autoincrement())
+  created_at              DateTime                  @default(now()) @db.Timestamp(6)
+  name                    String                    @unique @db.VarChar
+  overview                String                    @db.VarChar
+  token                   String?                   @db.VarChar
+  logo                    String?                   @db.VarChar
+  founder_name            String?                   @db.VarChar
+  start_date              DateTime?                 @db.Timestamp(6)
+  address                 String?                   @db.VarChar
+  whitepaper_url          String?                   @db.VarChar
+  contract_address        String?                   @db.VarChar
+  website                 String?                   @db.VarChar
+  type                    String[]                  @db.VarChar
+  main_category           String                    @db.VarChar
+  chains                  String[]                  @db.VarChar
+  cmc_id                  Int?
+  contract_chain          String?                   @db.VarChar
+  status                  BusinessStatus            @default(pending)
+  tags                    String[]                  @db.VarChar
+  creator_id              Int
+  super_users             super_users               @relation(fields: [creator_id], references: [id])
+  feedbacks_on_businesses feedbacks_on_businesses[]
+  followers_on_businesses followers_on_businesses[]
+  medias                  medias[]
+  notifications           notifications[]
+  rates_on_businesses     rates_on_businesses[]
+  reviews                 reviews[]
+
+  @@index([cmc_id])
+  @@index([cmc_id, token])
+  @@index([main_category])
+  @@index([main_category, type])
+  @@index([token])
+  @@index([type])
+}
+
+model campaigns {
+  id                 Int                  @id @default(autoincrement())
+  created_at         DateTime             @default(now()) @db.Timestamp(6)
+  title              String               @db.VarChar
+  description        String               @db.VarChar
+  metadata           String?              @db.VarChar
+  users_on_campaigns users_on_campaigns[]
+}
+
+model criteria_reviews {
+  id        Int     @id @default(autoincrement())
+  name      String
+  value     Int
+  review_id Int
+  reviews   reviews @relation(fields: [review_id], references: [id])
+}
+
+model dids {
+  id         Int     @id @default(autoincrement())
+  controller String  @unique
+  email      String?
+  username   String? @unique
+  users      users[]
+}
+
+model emails {
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  email      String   @unique @db.VarChar
+}
+
+model feedbacks_on_businesses {
+  id                   Int                    @id @default(autoincrement())
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  business_id          Int
+  user_id              Int
+  text                 String                 @db.VarChar
+  urls                 String[]               @db.VarChar
+  dislikes             Int[]                  @default([])
+  likes                Int[]                  @default([])
+  businesses           businesses             @relation(fields: [business_id], references: [id])
+  users                users                  @relation(fields: [user_id], references: [id])
+  replies_on_feedbacks replies_on_feedbacks[]
+}
+
+model followers_on_businesses {
+  follower_id Int
+  business_id Int
+  businesses  businesses @relation(fields: [business_id], references: [id], onDelete: Cascade)
+  users       users      @relation(fields: [follower_id], references: [id])
+
+  @@id([follower_id, business_id])
+}
+
+model medias {
+  id          Int          @id @default(autoincrement())
+  created_at  DateTime     @default(now()) @db.Timestamp(6)
+  url         String       @db.VarChar
+  business_id Int
+  path        String?
+  source      MediaSoucres
+  businesses  businesses   @relation(fields: [business_id], references: [id], onDelete: Cascade)
+}
+
+model notifications {
+  id                              Int         @id @default(autoincrement())
+  created_at                      DateTime    @default(now()) @db.Timestamp(6)
+  business_id                     Int?
+  review_id                       Int?
+  seen                            Boolean     @default(false)
+  to                              Int
+  from                            Int?
+  meta_data                       String?     @db.VarChar
+  type                            String
+  businesses                      businesses? @relation(fields: [business_id], references: [id])
+  users_notifications_fromTousers users?      @relation("notifications_fromTousers", fields: [from], references: [id])
+  reviews                         reviews?    @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  users_notifications_toTousers   users       @relation("notifications_toTousers", fields: [to], references: [id])
+}
+
+model rates_on_businesses {
+  valuer_id   Int
+  business_id Int
+  rating      Int
+  businesses  businesses @relation(fields: [business_id], references: [id])
+  users       users      @relation(fields: [valuer_id], references: [id])
+
+  @@id([valuer_id, business_id])
+}
+
+model replies {
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  desc       String   @db.VarChar
+  review_id  Int
+  likes      Int[]    @default([])
+  dislikes   Int[]    @default([])
+  user_id    Int
+  reviews    reviews  @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  users      users    @relation(fields: [user_id], references: [id])
+}
+
+model replies_on_feedbacks {
+  id                      Int                     @id @default(autoincrement())
+  created_at              DateTime                @default(now()) @db.Timestamp(6)
+  feedback_id             Int
+  user_id                 Int
+  desc                    String
+  feedbacks_on_businesses feedbacks_on_businesses @relation(fields: [feedback_id], references: [id])
+  users                   users                   @relation(fields: [user_id], references: [id])
+}
+
+model review_histories {
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  rate       Int
+  review_id  Int
+  txn_hash   String   @unique
+  headline   String?  @db.VarChar
+  comment    String?  @db.VarChar
+  reviews    reviews  @relation(fields: [review_id], references: [id], onDelete: Cascade)
+}
+
+model reviews {
+  id               Int                @id @default(autoincrement())
+  created_at       DateTime           @default(now()) @db.Timestamp(6)
+  rate             Int
+  business_id      Int
+  user_id          Int
+  status           ReviewStatuses     @default(pending)
+  likes            Int[]              @default([])
+  dislikes         Int[]              @default([])
+  headline         String?            @db.VarChar
+  comment          String?            @db.VarChar
+  txn_hash         String?            @unique
+  sharings         Int[]              @default([])
+  activities       activities[]
+  criteria_reviews criteria_reviews[]
+  notifications    notifications[]
+  replies          replies[]
+  review_histories review_histories[]
+  businesses       businesses         @relation(fields: [business_id], references: [id])
+  users            users              @relation(fields: [user_id], references: [id])
+}
+
+model search_params {
+  id            Int    @id @default(autoincrement())
+  business_name String @unique
+  times         Int
+}
+
+model socials {
+  id          Int       @id @default(autoincrement())
+  last_update DateTime? @db.Timestamp(6)
+  twitterId   String?
+  twitter     String?
+  discordId   String?
+  discord     String?
+  telegramId  String?
+  telegram    String?
+  user_id     Int       @unique
+  users       users     @relation(fields: [user_id], references: [id])
+}
+
+model storages {
+  id         Int       @id @default(autoincrement())
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+  url        String    @db.VarChar
+  tag        String?   @db.VarChar
+  banners    banners[]
+}
+
+model super_users {
+  id            Int            @id @default(autoincrement())
+  role          SuperUserRoles
+  refresh_token String?        @db.VarChar
+  username      String         @unique @db.VarChar
+  password      String         @db.VarChar
+  avatar        String?        @db.VarChar
+  businesses    businesses[]
+}
+
+model users {
+  id                                        Int                       @id @default(autoincrement())
+  created_at                                DateTime                  @default(now()) @db.Timestamp(6)
+  wallet_address                            String                    @unique @db.VarChar
+  noti_accepted                             Boolean                   @default(true)
+  spam_accepted                             Boolean                   @default(true)
+  email                                     String?                   @db.VarChar
+  nickname                                  String?                   @db.VarChar
+  avatar_url                                String?                   @db.VarChar
+  refresh_token                             String?                   @db.VarChar
+  isAdmin                                   Boolean                   @default(false)
+  password                                  String?                   @db.VarChar
+  background_url                            String?                   @db.VarChar
+  didId                                     Int?
+  last_sync_ibt                             DateTime?                 @db.Timestamp(6)
+  last_update                               DateTime?                 @db.Timestamp(6)
+  activities_activities_from_user_idTousers activities[]              @relation("activities_from_user_idTousers")
+  activities_activities_user_idTousers      activities[]              @relation("activities_user_idTousers")
+  feedbacks_on_businesses                   feedbacks_on_businesses[]
+  followers_on_businesses                   followers_on_businesses[]
+  notifications_notifications_fromTousers   notifications[]           @relation("notifications_fromTousers")
+  notifications_notifications_toTousers     notifications[]           @relation("notifications_toTousers")
+  rates_on_businesses                       rates_on_businesses[]
+  replies                                   replies[]
+  replies_on_feedbacks                      replies_on_feedbacks[]
+  reviews                                   reviews[]
+  socials                                   socials?
+  dids                                      dids?                     @relation(fields: [didId], references: [id])
+  users_on_campaigns                        users_on_campaigns[]
+}
+
+model users_on_campaigns {
+  user_id     Int
+  campaign_id Int
+  claimed     Boolean   @default(false)
+  amount      Int
+  txnHash     String?   @db.VarChar
+  campaigns   campaigns @relation(fields: [campaign_id], references: [id])
+  users       users     @relation(fields: [user_id], references: [id])
+
+  @@id([user_id, campaign_id])
+}
+
+enum ActivityKind {
+  reviewapproved
+  reacthelpful
+  reactdownful
+  reply
+  share
+}
+
+enum BusinessStatus {
+  approved
+  pending
+  rejected
+}
+
+enum MediaSoucres {
+  Photo
+  Telegram
+  Discord
+  Twitter
+  Blog
+}
+
+enum ReviewStatuses {
+  approved
+  pending
+  rejected
+}
+
+enum SuperUserRoles {
+  admin
+  editor
+}
