@@ -10,17 +10,17 @@ prisma::businesses::select!(Bn {
     logo
 });
 
-#[get("/")]
-pub async fn businesses(ctx: &State<Context>) -> Json<Vec<Bn::Data>> {
-    let businesses = ctx
-        .prisma
-        .businesses()
-        .find_many(vec![])
-        .take(10)
-        .select(Bn::select())
-        .exec()
-        .await
-        .unwrap();
+#[get("/businesses")]
+pub async fn get_businesses(ctx: &State<Context>) -> Json<Vec<Bn::Data>> {
+  let businesses = ctx
+    .prisma
+    .businesses()
+    .find_many(vec![])
+    .take(10)
+    .select(Bn::select())
+    .exec()
+    .await
+    .unwrap();
 
-    Json(businesses)
+  Json(businesses)
 }

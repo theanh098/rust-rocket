@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 pub static DATAMODEL_STR: &'static str =
-    include_str!("/home/vitaminc/rust-lang/rocket/prisma/schema.prisma");
+    include_str!("/home/theanh098/rust-lang/rust-workspace/rust-rocket/prisma/schema.prisma");
 static DATABASE_STR: &'static str = "postgresql";
 pub async fn new_client() -> Result<PrismaClient, ::prisma_client_rust::NewClientError> {
     PrismaClient::_builder().build().await

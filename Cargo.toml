@@ -12,3 +12,5 @@ members = [
 serde = { version = "1.0.163", features = ["derive"] }
 rocket = { version = "=0.5.0-rc.3", features = ["json"] }
 prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.8", default-features = false, features = ["postgresql"] }
+validator = { version = "0.16.0", features = ["derive"] }
+rocket-validation = "0.1.0"
