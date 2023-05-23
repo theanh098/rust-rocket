@@ -1,5 +1,6 @@
+use crate::validation::Validated;
 use rocket::serde::{json::Json, Deserialize, Serialize};
-use rocket_validation::{Validate, Validated};
+use validator::Validate;
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub struct HelloData {

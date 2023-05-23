@@ -1,11 +1,10 @@
+use crate::validation::Validated;
+use crate::{prisma, Context};
 use rocket::serde::json::Json;
 use rocket::State;
 use rocket::{get, post};
-
-use rocket_validation::{Validate, Validated};
 use serde::{Deserialize, Serialize};
-
-use crate::{prisma, Context};
+use validator::Validate;
 
 #[derive(Debug, PartialEq, FromFormField)]
 pub enum Color {

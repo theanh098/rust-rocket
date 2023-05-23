@@ -3,11 +3,14 @@
 #[macro_use]
 extern crate rocket;
 
+mod jwt;
 mod prisma;
 mod routes;
+mod validation;
 
 use prisma::PrismaClient;
-use rocket_validation::CachedValidationErrors;
+use rocket::serde::json::Json;
+use rocket::serde::{Deserialize, Serialize};
 use routes::{
   body::validated_body,
   business::get_businesses,
@@ -22,12 +25,18 @@ pub struct Context {
 fn hello() -> &'static str {
   "hello my friend"
 }
-
-use rocket::Request;
+#[derive(Serialize, Deserialize)]
+struct NotFoundErr {
+  code: u16,
+  message: String,
+}
 
 #[catch(404)]
-fn not_found(req: &Request) {
-  dbg!(req.local_cache(|| CachedValidationErrors(None)).0.as_ref());
+fn not_found() -> Json<NotFoundErr> {
+  Json(NotFoundErr {
+    code: 404,
+    message: String::from("Bad request or not found"),
+  })
 }
 
 #[launch]
@@ -40,8 +49,5 @@ async fn rocket() -> _ {
     .mount("/", routes![get_businesses])
     .mount("/", routes![validated_body])
     .mount("/", routes![query, validated_query])
-    .register(
-      "/",
-      catchers![rocket_validation::validation_catcher, not_found],
-    )
+    .register("/", catchers![validation::validation_catcher, not_found])
 }

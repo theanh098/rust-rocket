@@ -1,18 +1,28 @@
+use crate::validation::Validated;
 use rocket::serde::{json::Json, Deserialize, Serialize};
-use rocket_validation::{Validate, Validated};
+use validator::Validate;
+
+#[derive(Debug, PartialEq, FromFormField, Serialize, Deserialize)]
+pub enum Color {
+  Red,
+  Blue,
+  Green,
+}
 
 #[derive(Debug, Deserialize, Serialize, Validate, FromForm)]
-#[serde(crate = "rocket::serde")]
 pub struct HelloData {
   #[validate(length(min = 3))]
   name: String,
+
   #[validate(range(min = 0, max = 100))]
-  age: u8,
+  age: Option<u8>,
+
+  color: Color,
 }
 
-#[get("/query?<name>&<age>")]
-pub fn query(name: String, age: u8) -> Json<HelloData> {
-  Json(HelloData { name, age })
+#[get("/query?<name>&<age>&<color>")]
+pub fn query(name: String, age: Option<u8>, color: Color) -> Json<HelloData> {
+  Json(HelloData { name, age, color })
 }
 
 #[get("/validated-query?<params..>")]
