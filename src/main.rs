@@ -12,6 +12,7 @@ use prisma::PrismaClient;
 use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
 use routes::{
+  auth,
   body::validated_body,
   business::get_businesses,
   query::{query, validated_query},
@@ -49,5 +50,6 @@ async fn rocket() -> _ {
     .mount("/", routes![get_businesses])
     .mount("/", routes![validated_body])
     .mount("/", routes![query, validated_query])
+    .mount("/", routes![auth::login])
     .register("/", catchers![validation::validation_catcher, not_found])
 }
