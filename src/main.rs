@@ -3,14 +3,13 @@
 #[macro_use]
 extern crate rocket;
 
+mod catchers;
 mod jwt;
 mod prisma;
 mod routes;
 mod validation;
 
 use prisma::PrismaClient;
-use rocket::serde::json::Json;
-use rocket::serde::{Deserialize, Serialize};
 use routes::{
   auth,
   body::validated_body,
@@ -26,19 +25,6 @@ pub struct Context {
 fn hello() -> &'static str {
   "hello my friend"
 }
-#[derive(Serialize, Deserialize)]
-struct NotFoundErr {
-  code: u16,
-  message: String,
-}
-
-#[catch(404)]
-fn not_found() -> Json<NotFoundErr> {
-  Json(NotFoundErr {
-    code: 404,
-    message: String::from("Bad request or not found"),
-  })
-}
 
 #[launch]
 async fn rocket() -> _ {
@@ -51,5 +37,12 @@ async fn rocket() -> _ {
     .mount("/", routes![validated_body])
     .mount("/", routes![query, validated_query])
     .mount("/", routes![auth::login])
-    .register("/", catchers![validation::validation_catcher, not_found])
+    .register(
+      "/",
+      catchers![
+        validation::validation_catcher,
+        catchers::not_found,
+        catchers::unauthorized
+      ],
+    )
 }
