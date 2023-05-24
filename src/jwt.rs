@@ -27,7 +27,7 @@ pub fn jwt_generator(
     exp: expiration as usize,
   };
 
-  let header = Header::new(Algorithm::HS256);
+  let header = Header::new(Algorithm::ES256);
   let key = EncodingKey::from_secret(secret.as_bytes());
 
   encode(&header, &claims, &key)

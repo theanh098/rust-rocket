@@ -55,22 +55,22 @@ pub async fn login(
                 access_token: token,
               }));
             }
-            Err(_err) => {
+            Err(err) => {
               return Err(status::Custom(
                 Status::InternalServerError,
                 Json(LoginError {
-                  message: String::from("iinternal server error"),
+                  message: err.to_string(),
                   status: 500,
                 }),
               ));
             }
           }
         }
-        Err(_err) => {
+        Err(err) => {
           return Err(status::Custom(
             Status::InternalServerError,
             Json(LoginError {
-              message: String::from("iiinternal server error"),
+              message: err.to_string(),
               status: 500,
             }),
           ));
@@ -80,18 +80,17 @@ pub async fn login(
 
     Some(data) => {
       let token = jwt_generator(data.id as u32, data.wallet_address);
-      dbg!(&token);
       match token {
         Ok(token_unwrap) => {
           return Ok(Json(LoginResponse {
             access_token: token_unwrap,
           }));
         }
-        Err(_err) => {
+        Err(err) => {
           return Err(status::Custom(
             Status::InternalServerError,
             Json(LoginError {
-              message: String::from("iiiinternal server error"),
+              message: err.to_string(),
               status: 500,
             }),
           ));
