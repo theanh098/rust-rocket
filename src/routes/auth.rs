@@ -1,4 +1,5 @@
-use crate::jwt::jwt_generator;
+use crate::jwt::generate_tokens;
+use crate::jwt::Tokens;
 use crate::prisma;
 use crate::Context;
 use rocket::http::Status;
@@ -12,10 +13,6 @@ pub struct LoginRequest {
   pub wallet_address: String,
 }
 #[derive(Debug, Deserialize, Serialize)]
-pub struct LoginResponse {
-  pub access_token: String,
-}
-#[derive(Debug, Deserialize, Serialize)]
 pub struct LoginError {
   pub message: String,
   pub status: u32,
@@ -25,7 +22,7 @@ pub struct LoginError {
 pub async fn login(
   ctx: &State<Context>,
   body: Json<LoginRequest>,
-) -> Result<Json<LoginResponse>, status::Custom<Json<LoginError>>> {
+) -> Result<Json<Tokens>, status::Custom<Json<LoginError>>> {
   let user = ctx
     .prisma
     .users()
@@ -47,24 +44,8 @@ pub async fn login(
 
       match new_user {
         Ok(new_user) => {
-          let token = jwt_generator(new_user.id as u32, new_user.wallet_address);
-
-          match token {
-            Ok(token) => {
-              return Ok(Json(LoginResponse {
-                access_token: token,
-              }));
-            }
-            Err(err) => {
-              return Err(status::Custom(
-                Status::InternalServerError,
-                Json(LoginError {
-                  message: err.to_string(),
-                  status: 500,
-                }),
-              ));
-            }
-          }
+          let tokens = generate_tokens(new_user.id as u32, new_user.wallet_address);
+          return Ok(Json(tokens));
         }
         Err(err) => {
           return Err(status::Custom(
@@ -78,24 +59,9 @@ pub async fn login(
       }
     }
 
-    Some(data) => {
-      let token = jwt_generator(data.id as u32, data.wallet_address);
-      match token {
-        Ok(token_unwrap) => {
-          return Ok(Json(LoginResponse {
-            access_token: token_unwrap,
-          }));
-        }
-        Err(err) => {
-          return Err(status::Custom(
-            Status::InternalServerError,
-            Json(LoginError {
-              message: err.to_string(),
-              status: 500,
-            }),
-          ));
-        }
-      }
+    Some(user) => {
+      let tokens = generate_tokens(user.id as u32, user.wallet_address);
+      return Ok(Json(tokens));
     }
   };
 }

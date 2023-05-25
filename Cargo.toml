@@ -16,3 +16,6 @@ validator = { version = "0.16.0", features = ["derive"] }
 chrono = "0.4.24"
 jsonwebtoken = "8.3.0"
 dotenvy = "0.15.7"
+redis = "0.23.0"
+r2d2 = "0.8.10"
+r2d2_redis = "0.14.0"

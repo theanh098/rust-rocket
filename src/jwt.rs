@@ -14,11 +14,19 @@ pub struct Claims {
   pub exp: usize,
 }
 
-pub fn jwt_generator(
-  id: u32,
-  wallet_address: String,
-) -> Result<String, jsonwebtoken::errors::Error> {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SubClaims {
+  pub id: u32,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Tokens {
+  access_token: String,
+  refresh_token: String,
+}
+
+pub fn generate_tokens(id: u32, wallet_address: String) -> Tokens {
   let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
+  let refresh_secret = env::var("JWT_REFRESH_SECRET").expect("JWT_REFRESH_SECRET must be set.");
 
   let expiration: i64 = Utc::now()
     .checked_add_signed(chrono::Duration::seconds(60))
@@ -31,18 +39,29 @@ pub fn jwt_generator(
     exp: expiration as usize,
   };
 
-  let header = Header::new(Algorithm::HS256);
-  let key = EncodingKey::from_secret(secret.as_bytes());
+  let sub_claims = SubClaims { id };
 
-  encode(&header, &claims, &key)
+  let header = Header::new(Algorithm::HS256);
+
+  let secret_key = EncodingKey::from_secret(secret.as_bytes());
+  let refresh_key = EncodingKey::from_secret(refresh_secret.as_bytes());
+
+  let access_token = encode(&header, &claims, &secret_key).expect("encode wrong with access_token");
+  let refresh_token =
+    encode(&header, &sub_claims, &refresh_key).expect("encode wrong with refresh_token");
+
+  Tokens {
+    access_token,
+    refresh_token,
+  }
 }
 
 pub fn decode_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-  let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
+  let access_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
 
   match decode::<Claims>(
     &token,
-    &DecodingKey::from_secret(secret.as_bytes()),
+    &DecodingKey::from_secret(access_secret.as_bytes()),
     &Validation::new(Algorithm::HS256),
   ) {
     Ok(token) => Ok(token.claims),
@@ -68,16 +87,44 @@ impl<'r> FromRequest<'r> for Claims {
 
         Outcome::Failure((Status::Unauthorized, ()))
       }
+
       Some(bearer_token) => {
         let token = bearer_token.trim_start_matches("Bearer").trim();
         match decode_jwt(token) {
           Ok(claims) => Outcome::Success(claims),
+
           Err(err) => {
             req.local_cache(|| JwtGuardErr {
               message: err.to_string(),
             });
             Outcome::Failure((Status::Unauthorized, ()))
           }
+        }
+      }
+    }
+  }
+}
+#[derive(Debug)]
+pub struct OptionalClaims(pub Option<Claims>);
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for OptionalClaims {
+  type Error = ();
+
+  async fn from_request(
+    req: &'r Request<'_>,
+  ) -> rocket::request::Outcome<OptionalClaims, Self::Error> {
+    let bearer_token = req.headers().get_one("authorization");
+
+    match bearer_token {
+      None => Outcome::Success(OptionalClaims(None)),
+
+      Some(bearer_token) => {
+        let token = bearer_token.trim_start_matches("Bearer").trim();
+
+        match decode_jwt(token) {
+          Ok(claims) => Outcome::Success(OptionalClaims(Some(claims))),
+          _ => Outcome::Success(OptionalClaims(None)),
         }
       }
     }
