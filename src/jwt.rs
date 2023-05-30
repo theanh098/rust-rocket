@@ -5,6 +5,7 @@ use rocket::{
   request::{FromRequest, Outcome, Request},
   serde::{Deserialize, Serialize},
 };
+use serde::de::DeserializeOwned;
 use std::env;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -17,30 +18,42 @@ pub struct Claims {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SubClaims {
   pub id: u32,
+  pub exp: usize,
 }
+#[derive(Debug)]
+pub struct JwtAuthGuard<T>(pub T);
+#[derive(Debug)]
+pub struct OptionalClaims(pub Option<Claims>);
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Tokens {
   access_token: String,
-  refresh_token: String,
+  pub refresh_token: String,
 }
 
 pub fn generate_tokens(id: u32, wallet_address: String) -> Tokens {
   let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
   let refresh_secret = env::var("JWT_REFRESH_SECRET").expect("JWT_REFRESH_SECRET must be set.");
 
-  let expiration: i64 = Utc::now()
+  let expiration_access: i64 = Utc::now()
     .checked_add_signed(chrono::Duration::seconds(60))
+    .expect("Invalid timestamp")
+    .timestamp();
+  let expiration_refresh: i64 = Utc::now()
+    .checked_add_signed(chrono::Duration::days(39))
     .expect("Invalid timestamp")
     .timestamp();
 
   let claims = Claims {
     id,
     wallet_address,
-    exp: expiration as usize,
+    exp: expiration_access as usize,
   };
 
-  let sub_claims = SubClaims { id };
-
+  let sub_claims = SubClaims {
+    id,
+    exp: expiration_refresh as usize,
+  };
   let header = Header::new(Algorithm::HS256);
 
   let secret_key = EncodingKey::from_secret(secret.as_bytes());
@@ -56,15 +69,16 @@ pub fn generate_tokens(id: u32, wallet_address: String) -> Tokens {
   }
 }
 
-pub fn decode_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-  let access_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
-
-  match decode::<Claims>(
+pub fn decode_jwt<T: DeserializeOwned>(
+  token: &str,
+  secret: String,
+) -> Result<T, jsonwebtoken::errors::Error> {
+  match decode::<T>(
     &token,
-    &DecodingKey::from_secret(access_secret.as_bytes()),
+    &DecodingKey::from_secret(secret.as_bytes()),
     &Validation::new(Algorithm::HS256),
   ) {
-    Ok(token) => Ok(token.claims),
+    Ok(decoded) => Ok(decoded.claims),
     Err(err) => Err(err),
   }
 }
@@ -75,7 +89,7 @@ pub struct JwtGuardErr {
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for Claims {
+impl<'r, T: DeserializeOwned> FromRequest<'r> for JwtAuthGuard<T> {
   type Error = ();
   async fn from_request(req: &'r Request<'_>) -> rocket::request::Outcome<Self, Self::Error> {
     let bearer_token = req.headers().get_one("authorization");
@@ -90,8 +104,10 @@ impl<'r> FromRequest<'r> for Claims {
 
       Some(bearer_token) => {
         let token = bearer_token.trim_start_matches("Bearer").trim();
-        match decode_jwt(token) {
-          Ok(claims) => Outcome::Success(claims),
+        let access_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
+
+        match decode_jwt(token, access_secret) {
+          Ok(claims) => Outcome::Success(JwtAuthGuard(claims)),
 
           Err(err) => {
             req.local_cache(|| JwtGuardErr {
@@ -104,9 +120,6 @@ impl<'r> FromRequest<'r> for Claims {
     }
   }
 }
-#[derive(Debug)]
-pub struct OptionalClaims(pub Option<Claims>);
-
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for OptionalClaims {
   type Error = ();
@@ -121,8 +134,10 @@ impl<'r> FromRequest<'r> for OptionalClaims {
 
       Some(bearer_token) => {
         let token = bearer_token.trim_start_matches("Bearer").trim();
+        let refresh_secret =
+          env::var("JWT_REFRESH_SECRET").expect("JWT_REFRESH_SECRET must be set.");
 
-        match decode_jwt(token) {
+        match decode_jwt(token, refresh_secret) {
           Ok(claims) => Outcome::Success(OptionalClaims(Some(claims))),
           _ => Outcome::Success(OptionalClaims(None)),
         }

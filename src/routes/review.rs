@@ -1,4 +1,4 @@
-use crate::jwt::{Claims, OptionalClaims};
+use crate::jwt::{Claims, JwtAuthGuard, OptionalClaims};
 use crate::prisma::{reviews, PrismaClient};
 use crate::validation::Validated;
 use rocket::serde::json::Json;
@@ -49,7 +49,7 @@ pub async fn get_reviews(
 }
 
 #[post("/reviews", data = "<input>")]
-pub async fn create_review(input: Validated<Json<SignupData>>, claims: Claims) {
+pub async fn create_review(input: Validated<Json<SignupData>>, claims: JwtAuthGuard<Claims>) {
   dbg!(input);
   dbg!(claims);
 }

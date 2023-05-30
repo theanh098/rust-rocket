@@ -1,4 +1,3 @@
-use redis::Client;
 use rocket::get;
 use rocket::serde::json::Json;
 use rocket::State;
@@ -12,20 +11,7 @@ prisma::businesses::select!(Bn {
 });
 
 #[get("/businesses")]
-pub async fn get_businesses(
-  prisma: &State<PrismaClient>,
-  redis_client: &State<Client>,
-) -> Json<Vec<Bn::Data>> {
-  let mut con = redis_client
-    .get_connection()
-    .expect("getting redis connection fail");
-
-  redis::cmd("SET")
-    .arg("my_key")
-    .arg(42)
-    .query::<()>(&mut con)
-    .expect("set my_key redis fail");
-
+pub async fn get_businesses(prisma: &State<PrismaClient>) -> Json<Vec<Bn::Data>> {
   let businesses = prisma
     .businesses()
     .find_many(vec![])

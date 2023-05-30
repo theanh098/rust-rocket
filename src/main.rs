@@ -8,6 +8,7 @@ mod jwt;
 mod prisma;
 mod routes;
 mod state;
+mod utils;
 mod validation;
 
 use routes::{
