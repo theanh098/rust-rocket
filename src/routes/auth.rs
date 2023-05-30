@@ -1,7 +1,7 @@
 use crate::jwt::generate_tokens;
 use crate::jwt::Tokens;
 use crate::prisma;
-use crate::Context;
+use crate::prisma::PrismaClient;
 use rocket::http::Status;
 use rocket::response::status;
 use rocket::serde::{json::Json, Deserialize, Serialize};
@@ -20,11 +20,10 @@ pub struct LoginError {
 
 #[post("/auth/login", data = "<body>")]
 pub async fn login(
-  ctx: &State<Context>,
+  prisma: &State<PrismaClient>,
   body: Json<LoginRequest>,
 ) -> Result<Json<Tokens>, status::Custom<Json<LoginError>>> {
-  let user = ctx
-    .prisma
+  let user = prisma
     .users()
     .find_unique(prisma::users::wallet_address::equals(
       body.wallet_address.to_string(),
@@ -35,8 +34,7 @@ pub async fn login(
 
   match user {
     None => {
-      let new_user = ctx
-        .prisma
+      let new_user = prisma
         .users()
         .create(body.wallet_address.to_string(), vec![])
         .exec()

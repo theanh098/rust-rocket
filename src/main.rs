@@ -7,8 +7,8 @@ mod catchers;
 mod jwt;
 mod prisma;
 mod routes;
+mod state;
 mod validation;
-use prisma::PrismaClient;
 
 use routes::{
   auth,
@@ -18,11 +18,6 @@ use routes::{
   review::{create_review, get_review, get_reviews},
 };
 
-pub struct Context {
-  pub prisma: PrismaClient,
-  pub redis: redis::Connection,
-}
-
 #[get("/")]
 fn hello() -> &'static str {
   "hello my friend"
@@ -30,12 +25,9 @@ fn hello() -> &'static str {
 
 #[launch]
 async fn rocket() -> _ {
-  let prisma = PrismaClient::_builder().build().await.unwrap();
-  let client = redis::Client::open("redis://127.0.0.1/").expect("opening redis client was wrong");
-  let con = client.get_connection().expect("connecting redis was wrong");
-
   rocket::build()
-    .manage(Context { prisma, redis: con })
+    .manage(state::prisma_client().await)
+    .manage(state::redis_client())
     .mount("/", routes![hello])
     .mount("/", routes![get_reviews, create_review, get_review])
     .mount("/", routes![get_businesses])

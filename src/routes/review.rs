@@ -1,6 +1,6 @@
 use crate::jwt::{Claims, OptionalClaims};
+use crate::prisma::{reviews, PrismaClient};
 use crate::validation::Validated;
-use crate::{prisma, Context};
 use rocket::serde::json::Json;
 use rocket::State;
 use rocket::{get, post};
@@ -28,17 +28,16 @@ pub struct SignupData {
 
 #[get("/reviews?<page>&<limit>&<color>")]
 pub async fn get_reviews(
-  ctx: &State<Context>,
+  prisma: &State<PrismaClient>,
   page: Option<u32>,
   limit: Option<u32>,
   color: Option<Color>,
-) -> Json<Vec<prisma::reviews::Data>> {
+) -> Json<Vec<reviews::Data>> {
   dbg!(page);
   dbg!(limit);
   dbg!(color);
 
-  let reviews = ctx
-    .prisma
+  let reviews = prisma
     .reviews()
     .find_many(vec![])
     .take(10)
