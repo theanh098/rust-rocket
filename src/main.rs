@@ -34,7 +34,7 @@ async fn rocket() -> _ {
     .mount("/", routes![get_businesses])
     .mount("/", routes![validated_body])
     .mount("/", routes![query, validated_query])
-    .mount("/", routes![auth::login])
+    .mount("/", routes![auth::login, auth::renew])
     .register(
       "/",
       catchers![

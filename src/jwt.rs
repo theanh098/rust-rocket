@@ -1,3 +1,4 @@
+use crate::utils;
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rocket::{
@@ -28,10 +29,10 @@ pub struct OptionalClaims(pub Option<Claims>);
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Tokens {
   access_token: String,
-  pub refresh_token: String,
+  refresh_token: String,
 }
 
-pub fn generate_tokens(id: u32, wallet_address: String) -> Tokens {
+pub fn generate_tokens(id: u32, wallet_address: String, con: &mut redis::Connection) -> Tokens {
   let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
   let refresh_secret = env::var("JWT_REFRESH_SECRET").expect("JWT_REFRESH_SECRET must be set.");
 
@@ -62,6 +63,12 @@ pub fn generate_tokens(id: u32, wallet_address: String) -> Tokens {
   let access_token = encode(&header, &claims, &secret_key).expect("encode wrong with access_token");
   let refresh_token =
     encode(&header, &sub_claims, &refresh_key).expect("encode wrong with refresh_token");
+
+  redis::cmd("SET")
+    .arg(utils::refresh_token_generate(id as usize))
+    .arg(&refresh_token)
+    .query::<()>(con)
+    .expect("set my_key redis fail");
 
   Tokens {
     access_token,
